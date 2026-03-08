@@ -120,32 +120,21 @@ def test_cannot_deposit_if_total_deposit_would_exceed_payment_amount(payment_ser
         )
 
 
-def test_cannot_overpay_order_via_deposit(payment_service, order_1000):
+def test_cannot_overpay_order_via_payment_creation(payment_service, order_1000):
     
 
-    payment_1 = payment_service.create_payment(
+    payment_service.create_payment(
         order=order_1000,
         amount=Decimal("600.00"),
         payment_type=PaymentType.CASH,
     )
-    payment_2 = payment_service.create_payment(
+    
+    with pytest.raises(OverpaymentError):
+        payment_service.create_payment(
         order=order_1000,
-        amount=Decimal("400.00"),
+        amount=Decimal("500.00"),
         payment_type=PaymentType.ACQUIRING,
     )
-
-    payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment_1,
-        amount=Decimal("600.00"),
-    )
-
-    with pytest.raises(OverpaymentError):
-        payment_service.deposit_payment(
-            order=order_1000,
-            payment=payment_2,
-            amount=Decimal("500.00"),
-        )
 
 
 def test_exact_full_deposit_marks_order_as_paid(payment_service, order_1000):
