@@ -1,13 +1,26 @@
-from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import List
+from enum import Enum
 
-from app.models.payment import Payment
+from sqlalchemy import Enum as SqlEnum
+from sqlalchemy import Numeric
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
 
 
-@dataclass
-class Order:
-    id: int
-    amount: Decimal
-    payment_status: str
-    payments: List[Payment] = field(default_factory=list)
+class OrderPaymentStatus(str, Enum):
+    UNPAID = "unpaid"
+    PARTIALLY_PAID = "partially_paid"
+    PAID = "paid"
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    payment_status: Mapped[OrderPaymentStatus] = mapped_column(
+        SqlEnum(OrderPaymentStatus),
+        default=OrderPaymentStatus.UNPAID,
+        nullable=False,
+    )
