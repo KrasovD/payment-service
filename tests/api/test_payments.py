@@ -120,7 +120,7 @@ def test_deposit_payment(client: TestClient, order_1000):
     assert data["id"] == payment_id
     assert data["amount"] == "500.00"
     assert data["deposited_amount"] == "200.00"
-    assert data["refunded_amount"] == "0"
+    assert data["refunded_amount"] == "0.00"
     assert data["status"] == "pending"
 
 
