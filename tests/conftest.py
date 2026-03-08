@@ -1,29 +1,38 @@
 import pytest
-from fastapi.testclient import TestClient
+from decimal import Decimal
 
 from app.services.payment_service import PaymentService
-from app.main import app
-from tests.factories.order import make_order
+from app.repositories.memory import (
+    InMemoryOrderRepository, 
+    InMemoryPaymentRepository,
+    )
+from app.models.order import Order
 
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+def repos():
+    order_repo = InMemoryOrderRepository()
+    payment_repo = InMemoryPaymentRepository()
+    return order_repo, payment_repo
 
 @pytest.fixture
-def payment_service():
-    return PaymentService()
+def payment_service(repos):
+    order_repo, payment_repo = repos
+
+    return PaymentService(order_repo, payment_repo)
 
 
 @pytest.fixture
-def order_1000():
-    return make_order(amount="1000.00")
+def order_1000(repos):
+    order_repo, _ = repos
 
+    order = Order(
+        id=1,
+        amount=Decimal("1000.00"),
+        payment_status="unpaid",
+        payments=[],
+    )
 
-@pytest.fixture
-def seeded_order_1000():
-    return {
-        "id": 1,
-        "amount": "1000.00",
-        "payment_status": "unpaid",
-    }
+    order_repo.save(order)
+
+    return order

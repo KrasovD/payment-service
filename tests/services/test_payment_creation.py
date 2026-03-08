@@ -7,7 +7,7 @@ from app.services.exceptions import OverpaymentError
 
 def test_can_create_cash_payment(payment_service, order_1000):
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("300.00"),
         payment_type=PaymentType.CASH,
     )
@@ -20,7 +20,7 @@ def test_can_create_cash_payment(payment_service, order_1000):
 
 def test_can_create_acquiring_payment(payment_service, order_1000):
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("300.00"),
         payment_type=PaymentType.ACQUIRING,
     )
@@ -33,13 +33,13 @@ def test_can_create_acquiring_payment(payment_service, order_1000):
 
 def test_payment_types_share_same_model(payment_service, order_1000):
     cash_payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("200.00"),
         payment_type=PaymentType.CASH,
     )
 
     acquiring_payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("300.00"),
         payment_type=PaymentType.ACQUIRING,
     )
@@ -51,14 +51,14 @@ def test_payment_types_share_same_model(payment_service, order_1000):
 
 def test_cannot_create_payment_exceeding_order_remaining_amount(payment_service, order_1000):
     payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("800.00"),
         payment_type=PaymentType.CASH,
     )
 
     with pytest.raises(OverpaymentError):
         payment_service.create_payment(
-            order=order_1000,
+            order_id=order_1000.id,
             amount=Decimal("300.00"),
             payment_type=PaymentType.ACQUIRING,
         )
@@ -66,13 +66,13 @@ def test_cannot_create_payment_exceeding_order_remaining_amount(payment_service,
 
 def test_can_create_multiple_payments_within_order_limit(payment_service, order_1000):
     first_payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("400.00"),
         payment_type=PaymentType.CASH,
     )
 
     second_payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("600.00"),
         payment_type=PaymentType.ACQUIRING,
     )

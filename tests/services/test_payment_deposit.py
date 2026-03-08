@@ -11,14 +11,13 @@ from app.services.exceptions import (
 def test_deposit_increases_paid_amount(payment_service, order_1000):
     
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("600.00"),
         payment_type=PaymentType.CASH,
     )
 
     updated_payment = payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("250.00"),
     )
 
@@ -28,14 +27,13 @@ def test_deposit_increases_paid_amount(payment_service, order_1000):
 def test_deposit_updates_order_status_to_partially_paid(payment_service, order_1000):
     
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("1000.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("400.00"),
     )
 
@@ -45,14 +43,13 @@ def test_deposit_updates_order_status_to_partially_paid(payment_service, order_1
 def test_deposit_updates_order_status_to_paid(payment_service, order_1000):
     
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("1000.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("1000.00"),
     )
 
@@ -62,15 +59,14 @@ def test_deposit_updates_order_status_to_paid(payment_service, order_1000):
 def test_cannot_deposit_more_than_payment_amount(payment_service, order_1000):
     
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("500.00"),
         payment_type=PaymentType.CASH,
     )
 
     with pytest.raises(InvalidDepositAmountError):
         payment_service.deposit_payment(
-            order=order_1000,
-            payment=payment,
+            payment_id=payment.id,
             amount=Decimal("600.00"),
         )
 
@@ -78,19 +74,17 @@ def test_cannot_deposit_more_than_payment_amount(payment_service, order_1000):
 def test_can_make_partial_deposits(payment_service, order_1000):
     
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("700.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("200.00"),
     )
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("300.00"),
     )
 
@@ -101,21 +95,19 @@ def test_can_make_partial_deposits(payment_service, order_1000):
 def test_cannot_deposit_if_total_deposit_would_exceed_payment_amount(payment_service, order_1000):
     
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("500.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("300.00"),
     )
 
     with pytest.raises(InvalidDepositAmountError):
         payment_service.deposit_payment(
-            order=order_1000,
-            payment=payment,
+            payment_id=payment.id,
             amount=Decimal("250.00"),
         )
 
@@ -124,14 +116,14 @@ def test_cannot_overpay_order_via_payment_creation(payment_service, order_1000):
     
 
     payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("600.00"),
         payment_type=PaymentType.CASH,
     )
     
     with pytest.raises(OverpaymentError):
         payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("500.00"),
         payment_type=PaymentType.ACQUIRING,
     )
@@ -141,24 +133,22 @@ def test_exact_full_deposit_marks_order_as_paid(payment_service, order_1000):
     
 
     payment_1 = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("400.00"),
         payment_type=PaymentType.CASH,
     )
     payment_2 = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("600.00"),
         payment_type=PaymentType.ACQUIRING,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment_1,
+        payment_id=payment_1.id,
         amount=Decimal("400.00"),
     )
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment_2,
+        payment_id=payment_2.id,
         amount=Decimal("600.00"),
     )
 

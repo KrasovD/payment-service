@@ -6,21 +6,19 @@ from app.services.exceptions import InvalidRefundAmountError
 
 
 def test_refund_decreases_net_paid_amount(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("800.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("500.00"),
     )
     updated_payment = payment_service.refund_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("200.00"),
     )
 
@@ -29,23 +27,21 @@ def test_refund_decreases_net_paid_amount(payment_service, order_1000):
 
 
 def test_refund_updates_order_status_from_paid_to_partially_paid(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("1000.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("1000.00"),
     )
     assert order_1000.payment_status == "paid"
 
     payment_service.refund_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("300.00"),
     )
 
@@ -53,22 +49,20 @@ def test_refund_updates_order_status_from_paid_to_partially_paid(payment_service
 
 
 def test_full_refund_returns_order_to_unpaid(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("1000.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("1000.00"),
     )
 
     payment_service.refund_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("1000.00"),
     )
 
@@ -76,22 +70,20 @@ def test_full_refund_returns_order_to_unpaid(payment_service, order_1000):
 
 
 def test_can_make_partial_refund(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("700.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("700.00"),
     )
 
     payment_service.refund_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("200.00"),
     )
 
@@ -100,84 +92,75 @@ def test_can_make_partial_refund(payment_service, order_1000):
 
 
 def test_cannot_refund_more_than_deposited_amount(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("500.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("300.00"),
     )
 
     with pytest.raises(InvalidRefundAmountError):
         payment_service.refund_payment(
-            order=order_1000,
-            payment=payment,
+            payment_id=payment.id,
             amount=Decimal("400.00"),
         )
 
 
 def test_cannot_refund_more_than_remaining_net_deposit(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("600.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("600.00"),
     )
     payment_service.refund_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("250.00"),
     )
 
     with pytest.raises(InvalidRefundAmountError):
         payment_service.refund_payment(
-            order=order_1000,
-            payment=payment,
+            payment_id=payment.id,
             amount=Decimal("400.00"),
         )
 
 
 def test_partial_refund_keeps_order_paid_if_other_payments_cover_full_amount(payment_service, order_1000):
-    
 
     payment_1 = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("600.00"),
         payment_type=PaymentType.CASH,
     )
     payment_2 = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("400.00"),
         payment_type=PaymentType.ACQUIRING,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment_1,
+        payment_id=payment_1.id,
         amount=Decimal("600.00"),
     )
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment_2,
+        payment_id=payment_2.id,
         amount=Decimal("400.00"),
     )
 
     assert order_1000.payment_status == "paid"
 
     payment_service.refund_payment(
-        order=order_1000,
-        payment=payment_1,
+        payment_id=payment_1.id,
         amount=Decimal("100.00"),
     )
 
@@ -185,23 +168,21 @@ def test_partial_refund_keeps_order_paid_if_other_payments_cover_full_amount(pay
 
 
 def test_refund_after_partial_deposit_can_return_order_to_unpaid(payment_service, order_1000):
-    
+
     payment = payment_service.create_payment(
-        order=order_1000,
+        order_id=order_1000.id,
         amount=Decimal("500.00"),
         payment_type=PaymentType.CASH,
     )
 
     payment_service.deposit_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("300.00"),
     )
     assert order_1000.payment_status == "partially_paid"
 
     payment_service.refund_payment(
-        order=order_1000,
-        payment=payment,
+        payment_id=payment.id,
         amount=Decimal("300.00"),
     )
 

@@ -6,14 +6,23 @@ from app.services.exceptions import (
     OverpaymentError,
     InvalidDepositAmountError,
     InvalidRefundAmountError,
+    OrderNotFoundError,
+    PaymentNotFoundError,
 )
+from app.repositories.interfaces import OrderRepository, PaymentRepository
 
 
 class PaymentService:
-    def __init__(self):
+    def __init__(self, order_repo: OrderRepository, payment_repo: PaymentRepository):
         self._next_id = 1
+        self.order_repo = order_repo
+        self.payment_repo = payment_repo
 
-    def create_payment(self, order: Order, amount: Decimal, payment_type: PaymentType) -> Payment:
+    def create_payment(self, order_id: int, amount: Decimal, payment_type: PaymentType) -> Payment:
+        order = self.order_repo.get_by_id(order_id)
+        if order is None:
+            raise OrderNotFoundError()
+
         current_total = sum(p.amount for p in order.payments)
 
         if current_total + amount > order.amount:
@@ -25,13 +34,21 @@ class PaymentService:
             amount=amount,
             type=payment_type,
         )
-
         self._next_id += 1
+        payment = self.payment_repo.save(payment)
         order.payments.append(payment)
-
+        self.order_repo.save(order)
         return payment
 
-    def deposit_payment(self, order: Order, payment: Payment, amount: Decimal) -> Payment:
+    def deposit_payment(self, payment_id: int, amount: Decimal) -> Payment:
+        payment = self.payment_repo.get_by_id(payment_id)
+        if payment is None:
+            raise PaymentNotFoundError()
+        
+        order = self.order_repo.get_by_id(payment.order_id)
+        if order is None:
+            raise OrderNotFoundError()
+        
         if payment.deposited_amount + amount > payment.amount:
             raise InvalidDepositAmountError() 
 
@@ -46,7 +63,15 @@ class PaymentService:
 
         return payment
 
-    def refund_payment(self, order: Order, payment: Payment, amount: Decimal) -> Payment:
+    def refund_payment(self, payment_id: int, amount: Decimal) -> Payment:
+        payment = self.payment_repo.get_by_id(payment_id)
+        if payment is None:
+            raise PaymentNotFoundError()
+        
+        order = self.order_repo.get_by_id(payment.order_id)
+        if order is None:
+            raise OrderNotFoundError()
+        
         if payment.refunded_amount + amount > payment.deposited_amount:
             raise InvalidRefundAmountError()
 
