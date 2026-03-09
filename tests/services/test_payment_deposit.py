@@ -21,7 +21,7 @@ def test_deposit_increases_paid_amount(payment_service, order_1000):
         amount=Decimal("250.00"),
     )
 
-    assert updated_payment.deposited_amount == Decimal("250.00")
+    assert sum(op.amount for op in updated_payment.operations) == Decimal("250.00")
 
 
 def test_deposit_updates_order_status_to_partially_paid(payment_service, order_1000):
@@ -88,7 +88,7 @@ def test_can_make_partial_deposits(payment_service, order_1000):
         amount=Decimal("300.00"),
     )
 
-    assert payment.deposited_amount == Decimal("500.00")
+    assert sum(op.amount for op in payment.operations) == Decimal("500.00")
     assert order_1000.payment_status == "partially_paid"
 
 
@@ -153,5 +153,5 @@ def test_exact_full_deposit_marks_order_as_paid(payment_service, order_1000):
     )
 
     assert order_1000.payment_status == "paid"
-    assert payment_1.deposited_amount == Decimal("400.00")
-    assert payment_2.deposited_amount == Decimal("600.00")
+    assert sum(op.amount for op in payment_1.operations) == Decimal("400.00")
+    assert sum(op.amount for op in payment_2.operations) == Decimal("600.00")

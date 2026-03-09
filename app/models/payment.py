@@ -1,5 +1,6 @@
 from decimal import Decimal
 from enum import Enum
+from typing import List
 
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy import ForeignKey, Numeric
@@ -44,6 +45,7 @@ class Payment(Base):
     )
 
     order: Mapped["Order"] = relationship(back_populates="payments")
+    operations: Mapped[List["PaymentOperation"]] = relationship(back_populates="payment", lazy="selectin")
 
 
 class PaymentOperation(Base):
@@ -58,3 +60,5 @@ class PaymentOperation(Base):
         nullable=False,
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+
+    payment: Mapped["Payment"] = relationship(back_populates="operations")

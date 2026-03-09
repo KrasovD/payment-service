@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import Mock
 from decimal import Decimal
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,9 +7,13 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.repositories.order_repository import SqlAlchemyOrderRepository
-from app.repositories.payment_repository import SqlAlchemyPaymentRepository
+from app.repositories.payment_repository import (
+    SqlAlchemyPaymentRepository, 
+    SqlAlchemyPaymentOperationRepository,
+    )
 from app.services.payment_service import PaymentService
 from app.models.order import Order, OrderPaymentStatus
+from app.services.bank_service import BankPaymentService
 from app.api.deps import get_payment_service
 from app.core.config import settings
 from app.main import app
@@ -39,13 +44,29 @@ def db_session():
 def repos(db_session):
     order_repo = SqlAlchemyOrderRepository(db_session)
     payment_repo = SqlAlchemyPaymentRepository(db_session)
-    return order_repo, payment_repo
+    operation_repo = SqlAlchemyPaymentOperationRepository(db_session)
+    return order_repo, payment_repo, operation_repo
 
 
 @pytest.fixture
 def payment_service(repos):
+    order_repo, payment_repo, operation_repo = repos
+    return PaymentService(order_repo, payment_repo, operation_repo)
+
+@pytest.fixture
+def bank_api_client_mock():
+    return Mock()
+
+
+@pytest.fixture
+def bank_payment_service(repos, bank_api_client_mock):
     order_repo, payment_repo = repos
-    return PaymentService(order_repo, payment_repo)
+
+    return BankPaymentService(
+        order_repo=order_repo,
+        payment_repo=payment_repo,
+        bank_api_client=bank_api_client_mock,
+    )
 
 
 @pytest.fixture

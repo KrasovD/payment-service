@@ -1,7 +1,6 @@
 from decimal import Decimal
-
 from app.models.order import Order, OrderPaymentStatus
-from app.models.payment import Payment, PaymentType
+from app.models.payment import Payment, PaymentType, PaymentOperation, OperationType
 from app.services.exceptions import (
     OverpaymentError,
     InvalidDepositAmountError,
@@ -10,7 +9,10 @@ from app.services.exceptions import (
     PaymentNotFoundError,
 )
 from app.repositories.order_repository import SqlAlchemyOrderRepository
-from app.repositories.payment_repository import SqlAlchemyPaymentRepository
+from app.repositories.payment_repository import (
+    SqlAlchemyPaymentRepository, 
+    SqlAlchemyPaymentOperationRepository,
+)
 
 
 class PaymentService:
@@ -18,9 +20,11 @@ class PaymentService:
         self,
         order_repo: SqlAlchemyOrderRepository,
         payment_repo: SqlAlchemyPaymentRepository,
+        payment_operation_repo: SqlAlchemyPaymentOperationRepository,
     ) -> None:
         self.order_repo = order_repo
         self.payment_repo = payment_repo
+        self.payment_operation_repo = payment_operation_repo
 
     def create_payment(
         self,
@@ -54,15 +58,21 @@ class PaymentService:
         order = self.order_repo.get_by_id(payment.order_id)
         if order is None:
             raise OrderNotFoundError()
-
-        if payment.deposited_amount + amount > payment.amount:
+        
+        if self._total_operations(payment) + amount > payment.amount:
             raise InvalidDepositAmountError()
 
         total_paid = self._total_paid(order)
         if total_paid + amount > order.amount:
             raise OverpaymentError()
+        
+        operation = PaymentOperation(
+            payment_id=payment_id,
+            type=OperationType.DEPOSIT,
+            amount=amount,
+        )
 
-        payment.deposited_amount += amount
+        self.payment_operation_repo.save(operation)
         payment = self.payment_repo.save(payment)
 
         self._update_order_status(order)
@@ -79,10 +89,16 @@ class PaymentService:
         if order is None:
             raise OrderNotFoundError()
 
-        if payment.refunded_amount + amount > payment.deposited_amount:
+        if self._total_operations(payment) - amount < Decimal("0"):
             raise InvalidRefundAmountError()
 
-        payment.refunded_amount += amount
+        operation = PaymentOperation(
+            payment_id=payment_id,
+            type=OperationType.REFUND,
+            amount=amount,
+        )
+
+        self.payment_operation_repo.save(operation)
         payment = self.payment_repo.save(payment)
 
         self._update_order_status(order)
@@ -92,10 +108,19 @@ class PaymentService:
 
     def _total_paid(self, order: Order) -> Decimal:
         return sum(
-            payment.deposited_amount - payment.refunded_amount
+            self._total_operations(payment)
             for payment in order.payments
         )
-
+    
+    def _total_operations(self, payment: Payment) -> Decimal:
+        if payment.operations is None:
+            return Decimal("0.00")
+        
+        return sum(
+            operation.amount if operation.type == OperationType.DEPOSIT else -operation.amount
+            for operation in payment.operations
+        )
+    
     def _update_order_status(self, order: Order) -> None:
         total_paid = self._total_paid(order)
 
