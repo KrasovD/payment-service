@@ -31,12 +31,6 @@ class Payment(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    deposited_amount: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, default=Decimal("0.00")
-    )
-    refunded_amount: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, default=Decimal("0.00")
-    )
 
     type: Mapped[PaymentType] = mapped_column(
         SqlEnum(PaymentType),
