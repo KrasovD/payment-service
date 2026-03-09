@@ -11,6 +11,7 @@ from app.repositories.payment_repository import (
     SqlAlchemyPaymentRepository, 
     SqlAlchemyPaymentOperationRepository,
     )
+from app.repositories.bank_payment_repository import SqlAlchemyBankPaymentRepository
 from app.services.payment_service import PaymentService
 from app.models.order import Order, OrderPaymentStatus
 from app.services.bank_service import BankPaymentService
@@ -59,12 +60,14 @@ def bank_api_client_mock():
 
 
 @pytest.fixture
-def bank_payment_service(repos, bank_api_client_mock):
-    order_repo, payment_repo = repos
+def bank_payment_service(db_session, payment_service, bank_api_client_mock):
+    payment_repo = SqlAlchemyPaymentRepository(db_session)
+    bank_payment_repo = SqlAlchemyBankPaymentRepository(db_session)
 
     return BankPaymentService(
-        order_repo=order_repo,
+        payment_service=payment_service,
         payment_repo=payment_repo,
+        bank_payment_repo=bank_payment_repo,
         bank_api_client=bank_api_client_mock,
     )
 
