@@ -40,8 +40,9 @@ class BankPaymentService:
                 order_number=str(order_id),
                 amount=amount,
             )
-        except Exception:
-            raise BankPaymentError()
+        except Exception as error:
+            self.payment_service.mark_failed(payment.id)
+            raise BankPaymentError() from error
 
         bank_payment = BankPayment(
             payment_id=payment.id,
@@ -64,13 +65,12 @@ class BankPaymentService:
         result = self.bank_api_client.acquiring_check(bank_payment.bank_payment_id)
         
         if result.status == "paid":
-            if bank_payment.status != BankPaymentStatus.PAID:
-                self.payment_service.deposit_payment(payment_id, result.amount)
-
+            self._sync_paid(payment_id, payment.amount, result.amount)
             bank_payment.status = BankPaymentStatus.PAID
             bank_payment.paid_at = result.paid_at
 
         elif result.status == "failed":
+            self._sync_failed(payment_id)
             bank_payment.status = BankPaymentStatus.FAILED
 
         else:
@@ -91,3 +91,25 @@ class BankPaymentService:
         if bank_payment is None:
             raise BankPaymentNotFoundError()
         return bank_payment
+    
+    def _sync_paid(self, payment_id: int, payment_amount: Decimal, bank_amount: Decimal) -> None:
+        capture_amount = min(payment_amount, bank_amount)
+        local_paid = self.payment_service.get_paid_amount(payment_id)
+
+        if capture_amount > local_paid:
+            self.payment_service.deposit_payment(payment_id, capture_amount - local_paid)
+        elif capture_amount < local_paid:
+            self.payment_service.refund_payment(payment_id, local_paid - capture_amount)
+
+    def _sync_failed(self, payment_id: int) -> None:
+        payment = self.payment_repo.get_by_id(payment_id)
+        if payment is None:
+            raise PaymentNotFoundError()
+
+        local_paid = self.payment_service.get_paid_amount(payment_id)
+        if local_paid > Decimal("0"):
+            self.payment_service.refund_payment(payment_id, local_paid)
+
+        updated = self.payment_repo.get_by_id(payment_id)
+        if updated and updated.status == PaymentStatus.PENDING:
+            self.payment_service.mark_failed(payment_id)

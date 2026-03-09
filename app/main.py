@@ -9,6 +9,7 @@ from app.services.exceptions import (
     PaymentNotFoundError,
     BankPaymentError,
     BankPaymentNotFoundError,
+    InvalidAmountError,
 )
 
 app = FastAPI(title="Payment Service")
@@ -62,6 +63,14 @@ async def bank_payment_error_handler(request, exc):
         status_code=502,
         detail="Ошибка при взаимодействии с банковским сервисом",
     )
+
+@app.exception_handler(InvalidAmountError)
+async def invalid_amount_handler(request, exc):
+    raise HTTPException(
+        status_code=400,
+        detail="Сумма должна быть больше нуля",
+    )
+
 
 
 app.include_router(payments_router)

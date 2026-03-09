@@ -1,10 +1,11 @@
 import pytest
 from decimal import Decimal
 
-from app.models.payment import PaymentType
+from app.models.payment import PaymentType, PaymentStatus
 from app.services.exceptions import (
     InvalidDepositAmountError,
     OverpaymentError,
+    InvalidAmountError,
 )
 
 
@@ -130,7 +131,6 @@ def test_cannot_overpay_order_via_payment_creation(payment_service, order_1000):
 
 
 def test_exact_full_deposit_marks_order_as_paid(payment_service, order_1000):
-    
 
     payment_1 = payment_service.create_payment(
         order_id=order_1000.id,
@@ -155,3 +155,25 @@ def test_exact_full_deposit_marks_order_as_paid(payment_service, order_1000):
     assert order_1000.payment_status == "paid"
     assert sum(op.amount for op in payment_1.operations) == Decimal("400.00")
     assert sum(op.amount for op in payment_2.operations) == Decimal("600.00")
+
+def test_deposit_sets_payment_status_to_succeeded(payment_service, order_1000):
+    payment = payment_service.create_payment(
+        order_id=order_1000.id,
+        amount=Decimal("600.00"),
+        payment_type=PaymentType.CASH,
+    )
+
+    updated = payment_service.deposit_payment(payment.id, Decimal("100.00"))
+
+    assert updated.status == PaymentStatus.SUCCEEDED
+
+
+def test_deposit_rejects_non_positive_amount(payment_service, order_1000):
+    payment = payment_service.create_payment(
+        order_id=order_1000.id,
+        amount=Decimal("500.00"),
+        payment_type=PaymentType.CASH,
+    )
+
+    with pytest.raises(InvalidAmountError):
+        payment_service.deposit_payment(payment.id, Decimal("0"))

@@ -15,6 +15,9 @@ class PaymentNotFoundError(Exception):
 class OrderNotFoundError(Exception):
     pass
 
+class InvalidAmountError(Exception):
+    pass
+
 class BankApiError(Exception):
     pass
 

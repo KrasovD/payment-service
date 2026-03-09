@@ -1,8 +1,11 @@
 import pytest
 from decimal import Decimal
 
-from app.models.payment import PaymentType, OperationType
-from app.services.exceptions import InvalidRefundAmountError
+from app.models.payment import PaymentType, OperationType, PaymentStatus
+from app.services.exceptions import (
+    InvalidRefundAmountError,
+    InvalidAmountError,
+)
 
 
 def test_refund_decreases_net_paid_amount(payment_service, order_1000):
@@ -188,3 +191,27 @@ def test_refund_after_partial_deposit_can_return_order_to_unpaid(payment_service
 
     assert sum(op.amount for op in payment.operations if op.type == OperationType.REFUND) == Decimal("300.00")
     assert order_1000.payment_status == "unpaid"
+
+def test_full_refund_sets_payment_status_to_refunded(payment_service, order_1000):
+    payment = payment_service.create_payment(
+        order_id=order_1000.id,
+        amount=Decimal("400.00"),
+        payment_type=PaymentType.CASH,
+    )
+
+    payment_service.deposit_payment(payment.id, Decimal("400.00"))
+    updated = payment_service.refund_payment(payment.id, Decimal("400.00"))
+
+    assert updated.status == PaymentStatus.REFUNDED
+
+
+def test_refund_rejects_non_positive_amount(payment_service, order_1000):
+    payment = payment_service.create_payment(
+        order_id=order_1000.id,
+        amount=Decimal("400.00"),
+        payment_type=PaymentType.CASH,
+    )
+
+    payment_service.deposit_payment(payment.id, Decimal("100.00"))
+    with pytest.raises(InvalidAmountError):
+        payment_service.refund_payment(payment.id, Decimal("0"))

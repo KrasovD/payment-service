@@ -119,7 +119,7 @@ def test_deposit_payment(client: TestClient, order_1000):
 
     assert data["id"] == payment_id
     assert data["amount"] == "500.00"
-    assert data["status"] == "pending"
+    assert data["status"] == "succeeded"
 
 
 def test_deposit_payment_returns_404_for_unknown_payment(client: TestClient):
@@ -250,6 +250,30 @@ def test_refund_payment_returns_422_for_invalid_body(client: TestClient, order_1
     response = client.post(
         f"/payments/{payment_id}/refund",
         json={"amount": None},
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_payment_rejects_non_positive_amount(client: TestClient, order_1000):
+    response = client.post(
+        f"/orders/{order_1000.id}/payments",
+        json={"amount": "0", "type": "cash"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_deposit_rejects_non_positive_amount(client: TestClient, order_1000):
+    create_response = client.post(
+        f"/orders/{order_1000.id}/payments",
+        json={"amount": "300.00", "type": "cash"},
+    )
+    payment_id = create_response.json()["id"]
+
+    response = client.post(
+        f"/payments/{payment_id}/deposit",
+        json={"amount": "0"},
     )
 
     assert response.status_code == 422

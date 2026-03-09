@@ -2,7 +2,7 @@ import pytest
 from decimal import Decimal
 
 from app.models.payment import PaymentType
-from app.services.exceptions import OverpaymentError
+from app.services.exceptions import OverpaymentError, InvalidAmountError
 
 
 def test_can_create_cash_payment(payment_service, order_1000):
@@ -84,3 +84,11 @@ def test_can_create_multiple_payments_within_order_limit(payment_service, order_
 
     total = sum(payment.amount for payment in order_1000.payments)
     assert total == Decimal("1000.00")
+
+def test_cannot_create_payment_with_non_positive_amount(payment_service, order_1000):
+    with pytest.raises(InvalidAmountError):
+        payment_service.create_payment(
+            order_id=order_1000.id,
+            amount=Decimal("0"),
+            payment_type=PaymentType.CASH,
+        )
